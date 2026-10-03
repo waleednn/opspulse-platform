@@ -1,72 +1,74 @@
-import duckdb
+import sqlite3
 from pathlib import Path
 
-# specify the path to the database file inside the data folder
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "opspulse.duckdb"
+# Database path in the data folder
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "opspulse.db"
 
 def get_connection():
-    """Create a connection to the DuckDB database"""
+    """Establish connection to SQLite database."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    return duckdb.connect(str(DB_PATH))
+    return sqlite3.connect(str(DB_PATH))
 
 def init_database():
-    """Create the Star Schema tables and indices"""
+    """Initialize Star Schema tables."""
     con = get_connection()
-    
-    # 1. Table for Warehouses and Distribution Centers
-    con.execute("""
+    cur = con.cursor()
+
+    # 1. Hubs Dimension
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS dim_hubs (
-        hub_id VARCHAR PRIMARY KEY,
-        hub_name VARCHAR NOT NULL,
-        city VARCHAR NOT NULL,
+        hub_id TEXT PRIMARY KEY,
+        hub_name TEXT NOT NULL,
+        city TEXT NOT NULL,
         capacity_per_day INTEGER NOT NULL
     );
     """)
 
-    # 2. Table for Shipping and Couriers Companies
-    con.execute("""
+    # 2. Couriers Dimension
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS dim_couriers (
-        courier_id VARCHAR PRIMARY KEY,
-        courier_name VARCHAR NOT NULL,
-        fleet_type VARCHAR NOT NULL,
+        courier_id TEXT PRIMARY KEY,
+        courier_name TEXT NOT NULL,
+        fleet_type TEXT NOT NULL,
         contract_sla_hours INTEGER NOT NULL,
-        cost_per_km DOUBLE NOT NULL
+        cost_per_km REAL NOT NULL
     );
     """)
 
-    # 3. Table for Customers
-    con.execute("""
+    # 3. Customers Dimension
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS dim_customers (
-        customer_id VARCHAR PRIMARY KEY,
-        customer_type VARCHAR NOT NULL,   -- 'B2B' or 'B2C'
-        city VARCHAR NOT NULL,
-        tier VARCHAR NOT NULL             -- 'Standard', 'Premium', 'Enterprise'
+        customer_id TEXT PRIMARY KEY,
+        customer_type TEXT NOT NULL,
+        city TEXT NOT NULL,
+        tier TEXT NOT NULL
     );
     """)
 
-    # 4. Fact Table for Shipments
-    con.execute("""
+    # 4. Shipments Fact Table
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS fact_shipments (
-        shipment_id VARCHAR PRIMARY KEY,
-        order_timestamp TIMESTAMP NOT NULL,
-        dispatch_timestamp TIMESTAMP,
-        promised_delivery_timestamp TIMESTAMP NOT NULL,
-        actual_delivery_timestamp TIMESTAMP,
-        hub_id VARCHAR REFERENCES dim_hubs(hub_id),
-        courier_id VARCHAR REFERENCES dim_couriers(courier_id),
-        customer_id VARCHAR REFERENCES dim_customers(customer_id),
-        distance_km DOUBLE NOT NULL,
-        shipping_fee DOUBLE NOT NULL,
-        delivery_status VARCHAR NOT NULL,  -- 'Delivered', 'Returned', 'Delayed'
-        is_sla_breached BOOLEAN NOT NULL,
-        dispatch_delay_hours DOUBLE,
-        delivery_delay_hours DOUBLE,
+        shipment_id TEXT PRIMARY KEY,
+        order_timestamp TEXT NOT NULL,
+        dispatch_timestamp TEXT,
+        promised_delivery_timestamp TEXT NOT NULL,
+        actual_delivery_timestamp TEXT,
+        hub_id TEXT REFERENCES dim_hubs(hub_id),
+        courier_id TEXT REFERENCES dim_couriers(courier_id),
+        customer_id TEXT REFERENCES dim_customers(customer_id),
+        distance_km REAL NOT NULL,
+        shipping_fee REAL NOT NULL,
+        delivery_status TEXT NOT NULL,
+        is_sla_breached INTEGER NOT NULL,
+        dispatch_delay_hours REAL,
+        delivery_delay_hours REAL,
         customer_rating INTEGER
     );
     """)
 
-    print(f"Database schema initialized successfully at: {DB_PATH}")
+    con.commit()
     con.close()
+    print(f"Database schema initialized successfully at: {DB_PATH}")
 
 if __name__ == "__main__":
     init_database()
