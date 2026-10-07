@@ -90,3 +90,24 @@ if __name__ == "__main__":
         except ValueError as err:
             status = "BLOCKED (Safe)" if not should_pass else "FALSE POSITIVE"
             print(f"[{status}] Original: {query}\n -> Reason: {err}\n")
+
+
+def is_logistics_query(prompt: str) -> bool:
+    """
+    Checks if the user prompt is relevant to the logistics & analytics domain.
+    Returns False if the query is clearly off-topic (e.g., general trivia, weather, etc.).
+    """
+    
+    off_topic_triggers = [
+        "عاصمة", "الطقس", "رئيس", "ترجم", "قصيدة", "نكتة", "وصفة", "شعر", "علاج",
+        "capital", "weather", "president", "translate", "joke", "poem", "recipe"
+    ]
+    
+    prompt_lower = prompt.lower().strip()
+    
+    
+    for trigger in off_topic_triggers:
+        if trigger in prompt_lower:
+            return False
+            
+    return True
